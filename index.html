@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Моя страница • nyfybod.lol</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+    <style>
+        /* ——— RESET & BASE ——— */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: none !important;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0b0b0e;
+            color: #f0f0f0;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ——— ВИДЕО НА ВЕСЬ ЭКРАН ——— */
+        .video-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: 0;
+            filter: brightness(0.4) saturate(0.7);
+        }
+
+        /* ——— МАТРИЧНЫЙ ДОЖДЬ ——— */
+        #matrixCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.15;
+        }
+
+        /* ——— РЕГУЛИРОВКА ГРОМКОСТИ ——— */
+        .volume-control {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            background: rgba(18, 18, 24, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 30px;
+            padding: 0.5rem 1.2rem 0.5rem 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            cursor: none;
+        }
+
+        .volume-control input[type="range"] {
+            width: 100px;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            outline: none;
+            transition: background 0.3s ease;
+            cursor: none;
+        }
+
+        .volume-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #00f5d4;
+            cursor: none;
+            box-shadow: 0 0 20px rgba(0, 245, 212, 0.3);
+            transition: transform 0.2s ease;
+        }
+
+        .volume-control input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        .volume-control input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #00f5d4;
+            cursor: none;
+            border: none;
+            box-shadow: 0 0 20px rgba(0, 245, 212, 0.3);
+        }
+
+        .volume-label {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.5px;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .volume-icon {
+            font-size: 0.9rem;
+            opacity: 0.5;
+        }
+
+        /* ============================================ */
+        /* ——— КАРТОЧКА ——— */
+        /* ============================================ */
+        .glass-container {
+            position: relative;
+            z-index: 5;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1.5rem;
+            animation: fadeIn 0.8s ease forwards;
+            perspective: 1200px;
+        }
+
+        .glass-container.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* ===== ОБЁРТКА ДЛЯ DRAG & DROP ===== */
+        .card-wrapper {
+            position: relative;
+            max-width: 600px;
+            width: 100%;
+            touch-action: none;
+            cursor: grab;
+            transition: filter 0.3s ease;
+        }
+
+        .card-wrapper:active {
+            cursor: grabbing;
+        }
+
+        .card-wrapper.dragging {
+            cursor: grabbing;
+            filter: drop-shadow(0 20px 60px rgba(0, 245, 212, 0.15));
+        }
+
+        /* ===== САМА КАРТОЧКА ===== */
+        .card {
+            --border-width: 1px;
+            width: 100%;
+            padding: 2.5rem 2rem 2.2rem;
+            border-radius: 2.5rem;
+            position: relative;
+            text-align: center;
+            background: rgba(30, 30, 45, 0.55);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 60px rgba(0, 245, 212, 0.03);
+            transition: transform 0.08s ease-out, box-shadow 0.3s ease-out;
+            transform-style: preserve-3d;
+            will-change: transform;
+            overflow: hidden;
+        }
+
+        /* ——— Граница с градиентом ——— */
+        .card::before {
+            content: "";
+            position: absolute;
+            z-index: -1;
+            inset: -2px;
+            border-radius: 2.5rem;
+            border: 2px solid transparent;
+            background: linear-gradient(
+                135deg,
+                rgba(0, 245, 212, 0.5),
+                rgba(255, 105, 180, 0.4),
+                rgba(0, 180, 255, 0.5),
+                rgba(0, 245, 212, 0.5)
+            ) border-box;
+            mask: linear-gradient(black, black) border-box,
+                  linear-gradient(black, black) padding-box;
+            mask-composite: subtract;
+            -webkit-mask: linear-gradient(black, black) border-box,
+                         linear-gradient(black, black) padding-box;
+            -webkit-mask-composite: xor;
+            animation: borderShimmer 4s ease-in-out infinite;
+            background-size: 300% 300%;
+        }
+
+        @keyframes borderShimmer {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* ——— Второй слой для свечения ——— */
+        .card::after {
+            content: "";
+            position: absolute;
+            z-index: -2;
+            inset: -8px;
+            border-radius: 2.5rem;
+            background: radial-gradient(
+                circle at 30% 40%,
+                rgba(0, 245, 212, 0.12) 0%,
+                transparent 60%
+            ),
+            radial-gradient(
+                circle at 70% 60%,
+                rgba(255, 105, 180, 0.12) 0%,
+                transparent 60%
+            );
+            animation: glowFloat 6s ease-in-out infinite alternate;
+            filter: blur(40px);
+        }
+
+        @keyframes glowFloat {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(1.15); opacity: 1; }
+        }
+
+        .card > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ——— ПУЛЬСАЦИЯ КАРТОЧКИ ——— */
+        .card.pulse {
+            animation: pulseCard 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseCard {
+            0%, 100% { box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 60px rgba(0, 245, 212, 0.03); }
+            50% { box-shadow: 0 20px 80px rgba(0, 0, 0, 0.5), 0 0 80px rgba(0, 245, 212, 0.08); }
+        }
+
+        /* ——— Parallax 3D слои ——— */
+        .card .layer {
+            transition: transform 0.1s ease-out;
+            will-change: transform;
+        }
+
+        /* ——— АВАТАР ——— */
+        .avatar {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            margin: 0 auto 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.2rem;
+            font-weight: 700;
+            color: #0b0b0e;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1), 0 10px 30px rgba(0, 0, 0, 0.3);
+            user-select: none;
+            position: relative;
+            z-index: 2;
+            overflow: hidden;
+            background: #1a1a24;
+            border: 2px solid rgba(255, 255, 255, 0.05);
+            transition: box-shadow 0.3s ease, transform 0.3s ease-out;
+            transform-style: preserve-3d;
+        }
+
+        .avatar.pulse {
+            animation: pulseAvatar 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseAvatar {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+
+        .avatar:hover {
+            box-shadow: 0 0 0 3px rgba(255, 100, 150, 0.3), 0 0 40px rgba(255, 100, 150, 0.15);
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ——— ИМЯ (ПЕЧАТНАЯ МАШИНКА) ——— */
+        .name-wrapper {
+            position: relative;
+            display: inline-block;
+            z-index: 2;
+            min-height: 2.5rem;
+        }
+
+        .name {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.15rem;
+            position: relative;
+            display: inline-block;
+            background: linear-gradient(
+                90deg,
+                #ffffff 0%,
+                #ffb6c1 25%,
+                #ff69b4 50%,
+                #ffb6c1 75%,
+                #ffffff 100%
+            );
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmerName 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px rgba(255, 105, 180, 0.3)) 
+                    drop-shadow(0 0 40px rgba(255, 105, 180, 0.15));
+            transition: filter 0.3s ease, transform 0.3s ease-out;
+        }
+
+        .name.pulse {
+            animation: shimmerName 3s ease-in-out infinite, pulseName 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseName {
+            0%, 100% { 
+                transform: scale(1);
+                filter: drop-shadow(0 0 20px rgba(255, 105, 180, 0.3)) drop-shadow(0 0 40px rgba(255, 105, 180, 0.15));
+            }
+            50% { 
+                transform: scale(1.05);
+                filter: drop-shadow(0 0 40px rgba(255, 105, 180, 0.6)) drop-shadow(0 0 80px rgba(255, 105, 180, 0.3));
+            }
+        }
+
+        @keyframes shimmerName {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.4em;
+            background: #ff69b4;
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: blink 0.7s step-end infinite;
+            box-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* ——— ГЛИТЧ ——— */
+        .name.glitch::before,
+        .name.glitch::after {
+            content: 'nyfybod';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: inherit;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .name.glitch::before {
+            animation: glitch1 0.3s infinite;
+            clip-path: polygon(0 0, 100% 0, 100% 20%, 0 20%);
+            color: #ff00ff;
+            text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff;
+        }
+
+        .name.glitch::after {
+            animation: glitch2 0.3s infinite;
+            clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%);
+            color: #00ffff;
+            text-shadow: 2px 0 #00ffff, -2px 0 #ff00ff;
+        }
+
+        @keyframes glitch1 {
+            0% { transform: translate(0); opacity: 0; }
+            10% { transform: translate(-3px, 2px); opacity: 0.6; }
+            20% { transform: translate(3px, -2px); opacity: 0.8; }
+            30% { transform: translate(-2px, 1px); opacity: 0.4; }
+            40% { transform: translate(2px, -1px); opacity: 0.7; }
+            50% { transform: translate(0); opacity: 0; }
+            100% { transform: translate(0); opacity: 0; }
+        }
+
+        @keyframes glitch2 {
+            0% { transform: translate(0); opacity: 0; }
+            15% { transform: translate(4px, -3px); opacity: 0.5; }
+            25% { transform: translate(-4px, 3px); opacity: 0.7; }
+            35% { transform: translate(3px, -2px); opacity: 0.3; }
+            45% { transform: translate(-3px, 2px); opacity: 0.6; }
+            55% { transform: translate(0); opacity: 0; }
+            100% { transform: translate(0); opacity: 0; }
+        }
+
+        /* ——— БИО ——— */
+        .bio {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 2.2rem;
+            font-weight: 400;
+            padding: 0 0.5rem;
+            position: relative;
+            z-index: 2;
+            transition: transform 0.3s ease-out;
+        }
+
+        .bio.pulse {
+            animation: pulseBio 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseBio {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+
+        .bio span {
+            color: #00f5d4;
+            font-weight: 500;
+        }
+
+        /* ——— СОЦИАЛЬНЫЕ СЕТИ (ЧЁРНО-БЕЛЫЕ) ——— */
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 1.2rem;
+            margin-bottom: 1.2rem;
+            position: relative;
+            z-index: 2;
+            flex-wrap: wrap;
+        }
+
+        .social-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+            cursor: none;
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .social-link::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            padding: 2px;
+            background: conic-gradient(
+                from 0deg,
+                rgba(0, 245, 212, 0.2),
+                rgba(255, 105, 180, 0.2),
+                rgba(0, 245, 212, 0.2)
+            );
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .social-link:hover::before {
+            opacity: 1;
+        }
+
+        .social-link:hover {
+            transform: translateY(-4px) scale(1.05);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(0, 245, 212, 0.2);
+            box-shadow: 0 8px 30px rgba(0, 245, 212, 0.1);
+        }
+
+        .social-link img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            filter: grayscale(1) brightness(0.3);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .social-link:hover img {
+            filter: grayscale(0.5) brightness(0.8);
+        }
+
+        .social-link .tooltip {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.6rem;
+            color: rgba(255, 255, 255, 0.3);
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s ease, bottom 0.3s ease;
+            letter-spacing: 0.5px;
+        }
+
+        .social-link:hover .tooltip {
+            opacity: 1;
+            bottom: -24px;
+        }
+
+        /* ——— СТАТИСТИКА ——— */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            padding-top: 1.2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.4);
+            position: relative;
+            z-index: 2;
+            transition: transform 0.3s ease-out;
+        }
+
+        .stats.pulse {
+            animation: pulseStats 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulseStats {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+        }
+
+        .stats span {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 600;
+        }
+
+        /* ——— ЗАСТАВКА ——— */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: none;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+            user-select: none;
+        }
+
+        .overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .overlay-text {
+            font-size: 2.2rem;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            padding: 0.8rem 2.2rem;
+            border-radius: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(4px);
+            background: linear-gradient(
+                90deg,
+                #ffffff 0%,
+                #ffb6c1 25%,
+                #ff69b4 50%,
+                #ffb6c1 75%,
+                #ffffff 100%
+            );
+            background-size: 300% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmerOverlay 3s ease-in-out infinite, pulseOverlay 2.2s ease-in-out infinite;
+            text-shadow: none;
+            filter: drop-shadow(0 0 30px rgba(255, 105, 180, 0.3)) 
+                    drop-shadow(0 0 60px rgba(255, 105, 180, 0.15));
+        }
+
+        @keyframes shimmerOverlay {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes pulseOverlay {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 30px rgba(255, 105, 180, 0.3)) drop-shadow(0 0 60px rgba(255, 105, 180, 0.15)); }
+            50% { transform: scale(1.03); filter: drop-shadow(0 0 50px rgba(255, 105, 180, 0.5)) drop-shadow(0 0 90px rgba(255, 105, 180, 0.25)); }
+        }
+
+        .overlay-sub {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 6px;
+            font-weight: 300;
+            text-transform: uppercase;
+            animation: floatSub 4s ease-in-out infinite;
+        }
+
+        @keyframes floatSub {
+            0%, 100% { transform: translateY(0); opacity: 0.3; }
+            50% { transform: translateY(-5px); opacity: 0.6; }
+        }
+
+        /* ——— КУРСОР (МГНОВЕННЫЙ) ——— */
+        #customCursor {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            width: 80px;
+            height: 80px;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #customCursor.show {
+            opacity: 1;
+        }
+
+        #customCursor img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.4));
+        }
+
+        /* ——— CANVAS ДЛЯ СНЕГА И ИСКР ——— */
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        /* ——— АДАПТИВ ——— */
+        @media (max-width: 480px) {
+            .card { padding: 1.8rem 1.2rem; border-radius: 2rem; }
+            .card::before { border-radius: 2rem; }
+            .card::after { border-radius: 2rem; }
+            .avatar { width: 85px; height: 85px; }
+            .name { font-size: 1.6rem; }
+            .social-link { width: 50px; height: 50px; }
+            .social-link img { width: 26px; height: 26px; }
+            .stats { gap: 1.2rem; flex-wrap: wrap; }
+            .overlay-text { font-size: 1.4rem; padding: 0.6rem 1.6rem; letter-spacing: 3px; }
+            .overlay-sub { font-size: 0.7rem; letter-spacing: 4px; }
+            #customCursor { width: 60px; height: 60px; }
+            .volume-control { bottom: 1rem; right: 1rem; padding: 0.4rem 0.8rem; }
+            .volume-control input[type="range"] { width: 60px; }
+            .social-links { gap: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== ВИДЕО (СО ЗВУКОМ) ===== -->
+    <video class="video-bg" id="bgVideo" autoplay loop playsinline>
+        <source src="zobi.mp4" type="video/mp4" />
+    </video>
+
+    <!-- ===== МАТРИЧНЫЙ ДОЖДЬ ===== -->
+    <canvas id="matrixCanvas"></canvas>
+
+    <!-- ===== КУРСОР ===== -->
+    <div id="customCursor" class="show">
+        <img 
+            src="https://configs-csgo.ru/upload/000/u1/6/e/6e22fbf2.png" 
+            alt="cursor"
+            onerror="this.style.display='none'; this.parentElement.style.display='none';"
+        />
+    </div>
+
+    <!-- ===== РЕГУЛИРОВКА ГРОМКОСТИ ===== -->
+    <div class="volume-control" id="volumeControl">
+        <span class="volume-icon">🔊</span>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.8" />
+        <span class="volume-label" id="volumeLabel">80%</span>
+    </div>
+
+    <!-- ===== ЗАСТАВКА ===== -->
+    <div class="overlay" id="overlay">
+        <div class="overlay-text">click to continue</div>
+        <div class="overlay-sub">✦ nyfybod.lol ✦</div>
+    </div>
+
+    <!-- ===== CANVAS ДЛЯ СНЕГА И ИСКР ===== -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- ===== ОСНОВНОЙ КОНТЕНТ ===== -->
+    <div class="glass-container" id="mainContent">
+        <div class="card-wrapper" id="cardWrapper">
+            <div class="card" id="card">
+                <!-- АВАТАР -->
+                <div class="avatar layer layer-1" id="avatar">
+                    <img 
+                        src="https://i.pinimg.com/vwebp/736x/79/64/96/7964966a8b4f1ee93325c242d057c512.webp" 
+                        alt="avatar"
+                        onerror="this.style.display='none'; this.parentElement.textContent='🤘';"
+                    />
+                </div>
+
+                <!-- ИМЯ -->
+                <div class="name-wrapper layer layer-2">
+                    <span class="name glitch" id="name"></span>
+                    <span class="typing-cursor" id="cursor"></span>
+                </div>
+                
+                <!-- БИО -->
+                <div class="bio layer layer-2" id="bio">
+                     <span>nyfy</span> • holy • vibecoding<br />
+                    «хз че писать <span>я воняю</span>»
+                </div>
+
+                <!-- СОЦИАЛЬНЫЕ СЕТИ -->
+                <div class="social-links layer layer-3" id="socialLinks">
+                    <a href="https://t.me/durov" class="social-link" id="linkTelegram" target="_blank">
+                        <img 
+                            src="https://cdn-icons-png.magnific.com/512/6422/6422206.png" 
+                            alt="Telegram"
+                            onerror="this.style.display='none'; this.parentElement.innerHTML='📱';"
+                        />
+                        <span class="tooltip">Telegram</span>
+                    </a>
+                    
+                    <a href="https://www.instagram.com/nyfybod/" class="social-link" id="linkInstagram" target="_blank">
+                        <img 
+                            src="https://cdn-icons-png.flaticon.com/512/3621/3621464.png" 
+                            alt="Instagram"
+                            onerror="this.style.display='none'; this.parentElement.innerHTML='📷';"
+                        />
+                        <span class="tooltip">Instagram</span>
+                    </a>
+                    
+                    <a href="https://www.tiktok.com/@nyfybod?_r=1&_t=ZS-98LiR46dU0r" class="social-link" id="linkTikTok" target="_blank">
+                        <img 
+                            src="https://ikonki.svgpng.ru/wp-content/uploads/2021/07/tik-tok.png" 
+                            alt="TikTok"
+                            onerror="this.style.display='none'; this.parentElement.innerHTML='🎵';"
+                        />
+                        <span class="tooltip">TikTok</span>
+                    </a>
+                    
+                    <a href="https://discord.gg/q8Kyn8aA5y" class="social-link" id="linkDiscord" target="_blank">
+                        <img 
+                            src="https://ikonki.svgpng.ru/wp-content/uploads/2021/07/Discord.png" 
+                            alt="Discord"
+                            onerror="this.style.display='none'; this.parentElement.innerHTML='💬';"
+                        />
+                        <span class="tooltip">Discord</span>
+                    </a>
+
+                    <a href="https://steamcommunity.com/profiles/76561199534088715/" class="social-link" id="linkSteam" target="_blank">
+                        <img 
+                            src="https://upload.wikimedia.org/wikipedia/commons/8/83/Steam_icon_logo.svg" 
+                            alt="Steam"
+                            onerror="this.style.display='none'; this.parentElement.innerHTML='🎮';"
+                        />
+                        <span class="tooltip">Steam</span>
+                    </a>
+                </div>
+
+                <!-- СТАТИСТИКА -->
+                <div class="stats layer layer-2" id="stats">
+                    <div>🔗 <span>5</span> соцсетей</div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== СКРИПТЫ ===== -->
+    <script>
+        // ============================================
+        // 1. КУРСОР (МГНОВЕННЫЙ)
+        // ============================================
+        const cursor = document.getElementById('customCursor');
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        // ============================================
+        // 2. ПЕЧАТНАЯ МАШИНКА (ЦИКЛИЧНАЯ)
+        // ============================================
+        const nameElement = document.getElementById('name');
+        const cursorElement = document.getElementById('cursor');
+        const text = 'nyfybod';
+        let index = 0;
+        let isTyping = false;
+        let glitchTimeout = null;
+
+        function typeWriter(callback) {
+            if (index < text.length) {
+                nameElement.textContent += text.charAt(index);
+                index++;
+                setTimeout(() => typeWriter(callback), 100 + Math.random() * 50);
+            } else {
+                nameElement.classList.add('glitch');
+                glitchTimeout = setTimeout(() => {
+                    nameElement.classList.remove('glitch');
+                }, 1500);
+                setTimeout(() => {
+                    cursorElement.style.display = 'none';
+                }, 2000);
+                setTimeout(() => {
+                    resetTyping();
+                    if (callback) callback();
+                }, 5000);
+            }
+        }
+
+        function resetTyping() {
+            if (glitchTimeout) clearTimeout(glitchTimeout);
+            nameElement.textContent = '';
+            nameElement.classList.remove('glitch');
+            cursorElement.style.display = 'inline-block';
+            index = 0;
+            isTyping = false;
+        }
+
+        function startTypingLoop() {
+            if (isTyping) return;
+            isTyping = true;
+            typeWriter(() => {
+                isTyping = false;
+                setTimeout(() => {
+                    if (!isTyping) startTypingLoop();
+                }, 1000);
+            });
+        }
+
+        // ============================================
+        // 3. ЗАСТАВКА + ВИДЕО + ГРОМКОСТЬ
+        // ============================================
+        const overlay = document.getElementById('overlay');
+        const mainContent = document.getElementById('mainContent');
+        const video = document.getElementById('bgVideo');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeLabel = document.getElementById('volumeLabel');
+
+        overlay.addEventListener('click', function() {
+            overlay.classList.add('hidden');
+            mainContent.classList.add('active');
+            video.play().catch(() => {});
+            video.muted = false;
+            video.volume = parseFloat(volumeSlider.value);
+            setTimeout(startTypingLoop, 500);
+        });
+
+        volumeSlider.addEventListener('input', function() {
+            const vol = parseFloat(this.value);
+            video.volume = vol;
+            volumeLabel.textContent = Math.round(vol * 100) + '%';
+        });
+
+        // ============================================
+        // 4. НАКЛОН КАРТОЧКИ (20 градусов, как в оригинале)
+        // ============================================
+        const card = document.getElementById('card');
+        let isHovering = false;
+        let isDragging = false;
+
+        card.addEventListener('mouseenter', () => {
+            if (!isDragging) {
+                isHovering = true;
+            }
+        });
+
+        card.addEventListener('mouseleave', () => {
+            isHovering = false;
+            if (!isDragging) {
+                card.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isHovering || isDragging) return;
+            
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            const rotateY = ((x - centerX) / centerX) * -20;
+            const rotateX = ((y - centerY) / centerY) * 20;
+            
+            card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+        });
+
+        // ============================================
+        // 5. PARALLAX 3D
+        // ============================================
+        const layers = document.querySelectorAll('.layer');
+        let mouseX3D = 0, mouseY3D = 0;
+        let targetX3D = 0, targetY3D = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            const rect = card.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            targetX3D = (e.clientX - centerX) / rect.width;
+            targetY3D = (e.clientY - centerY) / rect.height;
+        });
+
+        function updateParallax() {
+            mouseX3D += (targetX3D - mouseX3D) * 0.08;
+            mouseY3D += (targetY3D - mouseY3D) * 0.08;
+
+            layers.forEach((layer, i) => {
+                const depth = (i + 1) * 8;
+                const x = mouseX3D * depth;
+                const y = mouseY3D * depth;
+                if (!isDragging) {
+                    layer.style.transform = `translate(${x}px, ${y}px)`;
+                }
+            });
+
+            requestAnimationFrame(updateParallax);
+        }
+        updateParallax();
+
+        // ============================================
+        // 6. DRAG & DROP С ОГРАНИЧЕНИЕМ
+        // ============================================
+        const wrapper = document.getElementById('cardWrapper');
+        let startX, startY, offsetX, offsetY;
+        let velocityX = 0, velocityY = 0;
+        let lastMoveX = 0, lastMoveY = 0;
+        let dragId = null;
+
+        function clamp(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        wrapper.addEventListener('mousedown', (e) => {
+            if (e.target.closest('a') || e.target.closest('.social-link')) return;
+            isDragging = true;
+            isHovering = false;
+            const rect = wrapper.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            offsetX = rect.left;
+            offsetY = rect.top;
+            wrapper.classList.add('dragging');
+            wrapper.style.cursor = 'grabbing';
+            wrapper.style.transition = 'none';
+            velocityX = 0;
+            velocityY = 0;
+            lastMoveX = e.clientX;
+            lastMoveY = e.clientY;
+            if (dragId) cancelAnimationFrame(dragId);
+            // Сбрасываем наклон
+            card.style.transform = '';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            
+            velocityX = (e.clientX - lastMoveX) * 0.8;
+            velocityY = (e.clientY - lastMoveY) * 0.8;
+            lastMoveX = e.clientX;
+            lastMoveY = e.clientY;
+            
+            let newX = offsetX + dx;
+            let newY = offsetY + dy;
+            
+            const wrapperRect = wrapper.getBoundingClientRect();
+            const margin = 20;
+            
+            newX = clamp(newX, margin, window.innerWidth - wrapperRect.width - margin);
+            newY = clamp(newY, margin, window.innerHeight - wrapperRect.height - margin);
+            
+            wrapper.style.position = 'fixed';
+            wrapper.style.left = newX + 'px';
+            wrapper.style.top = newY + 'px';
+            wrapper.style.transform = 'none';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                wrapper.classList.remove('dragging');
+                wrapper.style.cursor = 'grab';
+                
+                let inertiaX = velocityX;
+                let inertiaY = velocityY;
+                const friction = 0.92;
+                const minVelocity = 0.1;
+                
+                function applyInertia() {
+                    const rect = wrapper.getBoundingClientRect();
+                    let newX = rect.left + inertiaX;
+                    let newY = rect.top + inertiaY;
+                    
+                    const margin = 20;
+                    newX = clamp(newX, margin, window.innerWidth - rect.width - margin);
+                    newY = clamp(newY, margin, window.innerHeight - rect.height - margin);
+                    
+                    wrapper.style.position = 'fixed';
+                    wrapper.style.left = newX + 'px';
+                    wrapper.style.top = newY + 'px';
+                    wrapper.style.transition = 'none';
+                    wrapper.style.transform = 'none';
+                    
+                    inertiaX *= friction;
+                    inertiaY *= friction;
+                    
+                    if (Math.abs(inertiaX) > minVelocity || Math.abs(inertiaY) > minVelocity) {
+                        dragId = requestAnimationFrame(applyInertia);
+                    } else {
+                        wrapper.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                    }
+                }
+                
+                if (Math.abs(velocityX) > 0.5 || Math.abs(velocityY) > 0.5) {
+                    applyInertia();
+                } else {
+                    const rect = wrapper.getBoundingClientRect();
+                    const margin = 20;
+                    const targetX = clamp(rect.left, margin, window.innerWidth - rect.width - margin);
+                    const targetY = clamp(rect.top, margin, window.innerHeight - rect.height - margin);
+                    
+                    if (rect.left !== targetX || rect.top !== targetY) {
+                        wrapper.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                        wrapper.style.left = targetX + 'px';
+                        wrapper.style.top = targetY + 'px';
+                        setTimeout(() => {
+                            wrapper.style.transition = '';
+                        }, 500);
+                    }
+                }
+            }
+        });
+
+        // ============================================
+        // 7. МАТРИЧНЫЙ ДОЖДЬ
+        // ============================================
+        const matrixCanvas = document.getElementById('matrixCanvas');
+        const matrixCtx = matrixCanvas.getContext('2d');
+        let matrixW, matrixH;
+
+        function resizeMatrix() {
+            matrixW = matrixCanvas.width = window.innerWidth;
+            matrixH = matrixCanvas.height = window.innerHeight;
+        }
+        resizeMatrix();
+        window.addEventListener('resize', resizeMatrix);
+
+        const cols = Math.floor(matrixW / 20);
+        const drops = [];
+        for (let i = 0; i < cols; i++) {
+            drops[i] = Math.random() * -100;
+        }
+
+        function drawMatrix() {
+            matrixCtx.fillStyle = 'rgba(0, 0, 0, 0.02)';
+            matrixCtx.fillRect(0, 0, matrixW, matrixH);
+            matrixCtx.fillStyle = '#00ff88';
+            matrixCtx.font = '16px monospace';
+            matrixCtx.shadowColor = 'rgba(0, 255, 136, 0.1)';
+            matrixCtx.shadowBlur = 5;
+            for (let i = 0; i < drops.length; i++) {
+                const char = String.fromCharCode(0x30A0 + Math.random() * 96);
+                const x = i * 20;
+                const y = drops[i] * 20;
+                matrixCtx.fillStyle = `rgba(0, 255, 136, ${0.2 + Math.random() * 0.3})`;
+                matrixCtx.fillText(char, x, y);
+                if (y > matrixH && Math.random() > 0.99) {
+                    drops[i] = 0;
+                }
+                drops[i] += 0.2 + Math.random() * 0.3;
+            }
+            requestAnimationFrame(drawMatrix);
+        }
+        drawMatrix();
+
+        // ============================================
+        // 8. СНЕГ (РОЗОВЫЙ + БЕЛЫЙ) + ИСКРЫ
+        // ============================================
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let W, H;
+
+        function resizeCanvas() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        class Snowflake {
+            constructor() {
+                this.reset();
+                this.x = Math.random() * W;
+                this.y = Math.random() * H;
+                this.alive = true;
+            }
+            reset() {
+                this.x = Math.random() * W;
+                this.y = -10;
+                this.radius = Math.random() * 3 + 1.5;
+                this.speed = Math.random() * 0.8 + 0.3;
+                this.wind = Math.random() * 0.5 - 0.25;
+                const isPink = Math.random() > 0.5;
+                if (isPink) {
+                    this.color = `rgba(255, 150, 200, ${0.6 + Math.random() * 0.4})`;
+                    this.glowColor = 'rgba(255, 150, 200, 0.15)';
+                } else {
+                    this.color = `rgba(255, 255, 255, ${0.6 + Math.random() * 0.4})`;
+                    this.glowColor = 'rgba(200, 230, 255, 0.15)';
+                }
+                this.swing = Math.random() * 2 - 1;
+                this.swingSpeed = Math.random() * 0.02 + 0.01;
+                this.angle = Math.random() * Math.PI * 2;
+                this.alive = true;
+                this.explodeTimer = 0;
+                this.explodeParticles = [];
+            }
+            update(mouseX, mouseY, mouseInfluence) {
+                if (!this.alive) {
+                    this.explodeTimer--;
+                    for (let i = this.explodeParticles.length - 1; i >= 0; i--) {
+                        const p = this.explodeParticles[i];
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        p.vy += 0.02;
+                        p.life -= 0.02;
+                        p.radius *= 0.98;
+                        if (p.life <= 0 || p.radius < 0.1) {
+                            this.explodeParticles.splice(i, 1);
+                        }
+                    }
+                    if (this.explodeTimer <= 0 && this.explodeParticles.length === 0) {
+                        this.reset();
+                        this.alive = true;
+                    }
+                    return;
+                }
+                let dx = this.wind;
+                let dy = this.speed;
+                if (mouseInfluence > 0.1) {
+                    const angleToMouse = Math.atan2(mouseY - this.y, mouseX - this.x);
+                    const dist = Math.hypot(mouseX - this.x, mouseY - this.y);
+                    const force = Math.min(0.3, 50 / (dist + 10)) * mouseInfluence;
+                    dx += Math.cos(angleToMouse) * force;
+                    dy += Math.sin(angleToMouse) * force;
+                }
+                this.angle += this.swingSpeed;
+                dx += Math.sin(this.angle) * 0.3;
+                this.x += dx;
+                this.y += dy;
+                if (this.y > H + 10) {
+                    this.reset();
+                    this.y = -10;
+                }
+                if (this.x > W + 10) this.x = -10;
+                if (this.x < -10) this.x = W + 10;
+            }
+            explode() {
+                if (!this.alive) return;
+                this.alive = false;
+                this.explodeTimer = 60;
+                const hue = Math.random() > 0.5 ? 330 : 0;
+                for (let i = 0; i < 12; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 3 + 1;
+                    this.explodeParticles.push({
+                        x: this.x,
+                        y: this.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed - 0.5,
+                        radius: Math.random() * 3 + 1,
+                        life: 1,
+                        color: hue === 330 ? `hsl(330, 100%, ${70 + Math.random() * 30}%)` : `hsl(0, 0%, ${80 + Math.random() * 20}%)`
+                    });
+                }
+            }
+            draw() {
+                if (!this.alive) {
+                    for (const p of this.explodeParticles) {
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, Math.max(p.radius, 0.3), 0, Math.PI * 2);
+                        ctx.fillStyle = p.color;
+                        ctx.globalAlpha = p.life * 0.9;
+                        ctx.fill();
+                        ctx.shadowColor = 'rgba(255, 255, 255, 0.2)';
+                        ctx.shadowBlur = 8;
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        ctx.globalAlpha = 1;
+                    }
+                    return;
+                }
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.shadowColor = this.glowColor;
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            contains(mx, my) {
+                if (!this.alive) return false;
+                const dx = this.x - mx;
+                const dy = this.y - my;
+                return (dx * dx + dy * dy) < (this.radius + 10) * (this.radius + 10);
+            }
+        }
+
+        class Spark {
+            constructor(x, y, mode = 'down') {
+                this.x = x;
+                this.y = y;
+                this.mode = mode;
+                if (mode === 'explode') {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 5 + 2;
+                    this.vx = Math.cos(angle) * speed;
+                    this.vy = Math.sin(angle) * speed - 1;
+                } else {
+                    this.vx = (Math.random() - 0.5) * 0.8;
+                    this.vy = Math.random() * 1.5 + 1.5;
+                }
+                this.life = 1;
+                this.decay = Math.random() * 0.015 + 0.008;
+                this.radius = Math.random() * 2.5 + 1.5;
+                const brightness = Math.floor(Math.random() * 60 + 195);
+                this.color = `${brightness}, ${brightness}, ${brightness}`;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.mode === 'explode') {
+                    this.vy += 0.04;
+                    this.vx *= 0.99;
+                    this.vy *= 0.99;
+                } else {
+                    this.vy += 0.02;
+                }
+                this.life -= this.decay;
+                this.radius *= 0.997;
+            }
+            draw() {
+                const alpha = this.life * 0.9;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, Math.max(this.radius, 0.3), 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${this.color}, ${alpha})`;
+                ctx.fill();
+                if (this.life > 0.3) {
+                    ctx.shadowColor = `rgba(255, 255, 255, ${alpha * 0.4})`;
+                    ctx.shadowBlur = 15;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+            isDead() {
+                return this.life <= 0 || this.radius < 0.2 || this.y > H + 20;
+            }
+        }
+
+        const snowflakes = [];
+        const sparks = [];
+        let mouseX = -1000, mouseY = -1000, mouseInfluence = 0;
+
+        for (let i = 0; i < 150; i++) {
+            snowflakes.push(new Snowflake());
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            mouseInfluence = 1;
+            for (let i = 0; i < 2; i++) {
+                sparks.push(new Spark(
+                    mouseX + (Math.random() - 0.5) * 15,
+                    mouseY + (Math.random() - 0.5) * 5,
+                    'down'
+                ));
+            }
+        });
+
+        setInterval(() => {
+            mouseInfluence = Math.max(0, mouseInfluence - 0.02);
+        }, 16);
+
+        document.addEventListener('click', (e) => {
+            const mx = e.clientX;
+            const my = e.clientY;
+            for (const flake of snowflakes) {
+                if (flake.contains(mx, my)) {
+                    flake.explode();
+                    for (let i = 0; i < 5; i++) {
+                        sparks.push(new Spark(
+                            flake.x + (Math.random() - 0.5) * 10,
+                            flake.y + (Math.random() - 0.5) * 10,
+                            'explode'
+                        ));
+                    }
+                    break;
+                }
+            }
+            for (let i = 0; i < 30; i++) {
+                sparks.push(new Spark(
+                    mx + (Math.random() - 0.5) * 20,
+                    my + (Math.random() - 0.5) * 20,
+                    'explode'
+                ));
+            }
+        });
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, W, H);
+            for (const flake of snowflakes) {
+                flake.update(mouseX, mouseY, mouseInfluence);
+                flake.draw();
+            }
+            for (let i = sparks.length - 1; i >= 0; i--) {
+                sparks[i].update();
+                sparks[i].draw();
+                if (sparks[i].isDead()) {
+                    sparks.splice(i, 1);
+                }
+            }
+            if (sparks.length > 200) {
+                sparks.splice(0, sparks.length - 200);
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // ============================================
+        // 9. ПУЛЬСАЦИЯ
+        // ============================================
+        setTimeout(() => {
+            document.querySelectorAll('.card, .avatar, .name, .bio, .social-link, .stats')
+                .forEach(el => {
+                    el.classList.add('pulse');
+                });
+        }, 500);
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            resizeMatrix();
+        });
+
+        console.log('🎯 МГНОВЕННЫЙ прицел!');
+        console.log('🌸 РОЗОВЫЕ И БЕЛЫЕ снежинки!');
+        console.log('💥 СНЕЖИНКИ ВЗРЫВАЮТСЯ при клике!');
+        console.log('🌀 МАТРИЧНЫЙ ДОЖДЬ!');
+        console.log('📝 ПЕЧАТНАЯ МАШИНКА (цикл 5 секунд)!');
+        console.log('💖 Имя переливается бело-розовым + ГЛИТЧ!');
+        console.log('🔊 РЕГУЛИРОВКА ГРОМКОСТИ!');
+        console.log('🔄 НАКЛОН УСИЛЕН (20 градусов)!');
+        console.log('🔄 PARALLAX 3D!');
+        console.log('🖱️ DRAG & DROP С ПЛАВНОСТЬЮ!');
+        console.log('⚫ ИКОНКИ ЧЁРНО-БЕЛЫЕ!');
+    </script>
+
+</body>
+</html>
